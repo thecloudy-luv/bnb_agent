@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.keystore
+keystore/
+keystores/
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Agent runtime data
+.agent-data/
+
+# Private notes and guides
+NOTES.md
+TASKS.md
+private/
