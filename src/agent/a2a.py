@@ -8,8 +8,12 @@ from bnbagent.config import resolve_network
 from bnbagent.erc8183 import ERC8183Client, NegotiationHandler
 from bnbagent.utils import RateLimitExceeded, SlidingWindowLimiter
 from bnbagent.wallets import EVMWalletProvider
+from agent.addresses import CAMPAIGN_WALLET
+from agent.chain import get_pair_reserves, get_wallet_balances, get_web3
 from agent.config import load_settings
+from agent.market import fetch_bnb_closes
 from agent.profile import PRICE_U
+from agent.strategy import current_weight, momentum_24h, pool_price, target_weight
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +165,94 @@ def handle_job_status(req_id: Any, data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def handle_rebalance_analysis(req_id: Any, data: dict[str, Any]) -> dict[str, Any]:
+    """Handle rebalance-analysis skill (read-only portfolio review)."""
+    cfg = load_settings()
+
+    # 1. Obtain market momentum
+    try:
+        closes = fetch_bnb_closes(hours=25)
+        momentum = momentum_24h(closes)
+    except Exception as exc:
+        logger.warning("Could not fetch BNB closes for analysis (%s); using 0.0", exc)
+        momentum = 0.0
+
+    target = target_weight(momentum)
+
+    # 2. Determine portfolio weights
+    bnb_weight_input = data.get("bnb_weight")
+    wbnb_input = data.get("wbnb")
+    busd_input = data.get("busd")
+
+    w3 = get_web3(cfg.rpc_url)
+    reserves = get_pair_reserves(w3)
+    price = pool_price(reserves["reserve_wbnb"], reserves["reserve_busd"])
+
+    if bnb_weight_input is not None:
+        current = float(bnb_weight_input)
+    elif wbnb_input is not None and busd_input is not None:
+        current = current_weight(float(wbnb_input), float(busd_input), price)
+    else:
+        # Default: evaluate agent's own portfolio on BSC Testnet
+        balances = get_wallet_balances(w3, CAMPAIGN_WALLET)
+        current = current_weight(balances["wbnb"], balances["busd"], price)
+
+    drift = current - target
+
+    if abs(drift) >= 0.03:
+        if drift > 0:
+            rec_action = "sell_wbnb"
+            rec_reason = (
+                f"BNB allocation ({current:.1%}) is {abs(drift):.1%} above target ({target:.1%}). "
+                "Recommend rebalancing by selling WBNB into BUSD."
+            )
+        else:
+            rec_action = "buy_wbnb"
+            rec_reason = (
+                f"BNB allocation ({current:.1%}) is {abs(drift):.1%} below target ({target:.1%}). "
+                "Recommend rebalancing by selling BUSD into WBNB."
+            )
+    else:
+        rec_action = "none"
+        rec_reason = (
+            f"BNB allocation ({current:.1%}) is within tolerance band of target ({target:.1%}). "
+            "No rebalancing action required."
+        )
+
+    explanation = (
+        f"Binance 24h BNB momentum is {momentum:+.2%}. TiltBalance calculates a target weight "
+        f"of {target:.1%} BNB. Current portfolio weight is {current:.1%} (drift {drift:+.2%})."
+    )
+
+    analysis_result = {
+        "momentum_24h": round(momentum, 6),
+        "target_bnb_weight": round(target, 4),
+        "current_bnb_weight": round(current, 4),
+        "drift": round(drift, 4),
+        "pool_price_busd": round(price, 4),
+        "recommended_action": rec_action,
+        "reason": rec_reason,
+        "explanation": explanation,
+    }
+
+    return {
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "result": {
+            "message": {
+                "role": "agent",
+                "parts": [
+                    {
+                        "kind": "data",
+                        "data": analysis_result,
+                    }
+                ],
+            },
+            "analysis": analysis_result,
+        },
+    }
+
+
 def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
     """Process an incoming A2A JSON-RPC 2.0 request."""
     if not isinstance(payload, dict):
@@ -199,6 +291,8 @@ def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
     if not skill:
         if "job_id" in data or "jobId" in data:
             skill = "erc8183-job-status"
+        elif "bnb_weight" in data or ("wbnb" in data and "busd" in data):
+            skill = "rebalance-analysis"
         elif "task_description" in data or "terms" in data:
             skill = "negotiate-erc8183-job"
         else:
@@ -208,5 +302,7 @@ def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
         return handle_negotiate(req_id, data, client_ip)
     elif skill == "erc8183-job-status":
         return handle_job_status(req_id, data)
+    elif skill == "rebalance-analysis":
+        return handle_rebalance_analysis(req_id, data)
     else:
         return jsonrpc_error(req_id, -32602, f"Invalid params: unsupported skill '{skill}'")

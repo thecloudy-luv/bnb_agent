@@ -61,7 +61,23 @@ def test_custom_rpc_and_chain_id() -> None:
 def test_private_key_not_in_repr() -> None:
     """Ensure private key is never leaked in repr or string representation."""
     secret = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    cfg = load_settings({"PRIVATE_KEY": secret})
+    cfg = load_settings({"PRIVATE_KEY": secret, "STORAGE_API_KEY": "pinata-secret-token"})
     repr_str = repr(cfg)
     assert secret not in repr_str
+    assert "pinata-secret-token" not in repr_str
     assert "<set>" in repr_str
+
+
+def test_new_config_fields() -> None:
+    """Verify RPC_LOGS_URL, STORAGE_API_KEY, JOB_SCAN_FROM_BLOCK, and EXCLUDED_CLIENTS."""
+    cfg = load_settings({
+        "RPC_LOGS_URL": "https://custom-logs.example.com",
+        "STORAGE_API_KEY": "my-pinata-jwt",
+        "JOB_SCAN_FROM_BLOCK": "123456",
+        "EXCLUDED_CLIENTS": "0xABC, 0xDEF ",
+    })
+    assert cfg.rpc_logs_url == "https://custom-logs.example.com"
+    assert cfg.storage_api_key == "my-pinata-jwt"
+    assert cfg.job_scan_from_block == 123456
+    assert cfg.excluded_clients == ("0xabc", "0xdef")
+

@@ -27,9 +27,10 @@ def test_build_agent_card() -> None:
     assert card["examples"] == EXAMPLES
 
     skill_ids = [s["id"] for s in card["skills"]]
-    assert len(skill_ids) == 2
+    assert len(skill_ids) == 3
     assert "negotiate-erc8183-job" in skill_ids
     assert "erc8183-job-status" in skill_ids
+    assert "rebalance-analysis" in skill_ids
 
     # Each skill must have id, name, description, examples
     for s in card["skills"]:
@@ -47,7 +48,7 @@ def test_agent_card_endpoint() -> None:
 
     data = response.json()
     assert data["name"] == AGENT_NAME
-    assert "category" in data
+    assert data["category"] == CATEGORY
     assert "iconUrl" in data
     assert "examples" in data
-    assert len(data["skills"]) == 2
+    assert len(data["skills"]) == 3

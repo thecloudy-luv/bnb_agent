@@ -40,6 +40,16 @@ def build_agent_card(base_url: str) -> dict[str, Any]:
                     "Query on-chain state of job 42",
                 ],
             },
+            {
+                "id": "rebalance-analysis",
+                "name": "Rebalance Analysis",
+                "description": "Analyze portfolio BNB/stable split and recommend rebalancing based on momentum.",
+                "examples": [
+                    "Analyse my 60/40 BNB/stable split and tell me how to rebalance",
+                    "Give me today's BNB tilt target and the swap you would make",
+                    "Analyze current TiltBalance agent portfolio state",
+                ],
+            },
         ],
         "examples": EXAMPLES,
     }
