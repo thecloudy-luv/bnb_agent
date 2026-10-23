@@ -44,12 +44,16 @@ def main() -> None:
     logger.info("Running setup_portfolio in %s mode for wallet: %s", mode_str, account.address)
 
     total_wei = Web3.to_wei(args.bnb, "ether")
-    logger.info("Step 1: Wrap %s tBNB -> WBNB", args.bnb)
-    wrap_res = wrap_bnb(total_wei, cfg.private_key, cfg.rpc_url, dry_run=dry_run)
-    if not wrap_res.ok:
-        logger.error("Wrap failed: %s", wrap_res.error)
-        sys.exit(1)
-    logger.info("Wrap step completed: %s", wrap_res)
+    balances = get_wallet_balances(get_web3(cfg.rpc_url), account.address)
+    if balances["wbnb_wei"] >= total_wei:
+        logger.info("Wallet already holds %s WBNB (>= %s requested). Skipping wrap step.", balances["wbnb"], args.bnb)
+    else:
+        logger.info("Step 1: Wrap %s tBNB -> WBNB", args.bnb)
+        wrap_res = wrap_bnb(total_wei, cfg.private_key, cfg.rpc_url, dry_run=dry_run)
+        if not wrap_res.ok:
+            logger.error("Wrap failed: %s", wrap_res.error)
+            sys.exit(1)
+        logger.info("Wrap step completed: %s", wrap_res)
 
     # Half to swap to BUSD
     half_wei = total_wei // 2

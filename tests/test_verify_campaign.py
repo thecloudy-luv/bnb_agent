@@ -40,31 +40,27 @@ def test_audit_campaign_progress_evaluation() -> None:
     assert audit_ok["days"][0] is True
 
 
-@patch("scripts.verify_campaign.ERC8004Agent")
-def test_verify_agent_identity(mock_agent_class: MagicMock) -> None:
-    mock_agent = MagicMock()
-    mock_agent_class.return_value = mock_agent
+def test_verify_agent_identity() -> None:
+    mock_w3 = MagicMock()
+    mock_contract = MagicMock()
+    mock_w3.eth.contract.return_value = mock_contract
 
     # Case: matching owner
-    info_match = MagicMock()
-    info_match.owner = CAMPAIGN_WALLET
-    mock_agent.get_agent_info.return_value = info_match
+    mock_contract.functions.ownerOf.return_value.call.return_value = CAMPAIGN_WALLET
 
-    ok, msg = verify_agent_identity(MagicMock(), 42, CAMPAIGN_WALLET)
+    ok, msg = verify_agent_identity(mock_w3, 42, CAMPAIGN_WALLET)
     assert ok is True
     assert "matches campaign wallet" in msg
 
     # Case: mismatched owner
-    info_mismatch = MagicMock()
-    info_mismatch.owner = "0x9999999999999999999999999999999999999999"
-    mock_agent.get_agent_info.return_value = info_mismatch
+    mock_contract.functions.ownerOf.return_value.call.return_value = "0x9999999999999999999999999999999999999999"
 
-    ok2, msg2 = verify_agent_identity(MagicMock(), 42, CAMPAIGN_WALLET)
+    ok2, msg2 = verify_agent_identity(mock_w3, 42, CAMPAIGN_WALLET)
     assert ok2 is False
     assert "does not match" in msg2
 
     # Case: None agent_id
-    ok3, msg3 = verify_agent_identity(MagicMock(), None, CAMPAIGN_WALLET)
+    ok3, msg3 = verify_agent_identity(mock_w3, None, CAMPAIGN_WALLET)
     assert ok3 is False
     assert "not specified" in msg3
 

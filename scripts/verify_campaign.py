@@ -23,6 +23,17 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("verify_campaign")
 
 
+ERC8004_READ_ABI = [
+    {
+        "constant": True,
+        "inputs": [{"name": "tokenId", "type": "uint256"}],
+        "name": "ownerOf",
+        "outputs": [{"name": "", "type": "address"}],
+        "type": "function",
+    }
+]
+
+
 def verify_agent_identity(
     w3: Web3,
     agent_id: int | None,
@@ -32,10 +43,9 @@ def verify_agent_identity(
     if agent_id is None:
         return False, "ERC-8004 agentId is not specified (--agent-id or ERC8004_AGENT_ID)"
 
-    agent_client = ERC8004Agent(wallet_provider=None, network="bsc-testnet")
     try:
-        info = agent_client.get_agent_info(agent_id)
-        owner = info.owner
+        contract = w3.eth.contract(address=IDENTITY_REGISTRY, abi=ERC8004_READ_ABI)
+        owner = contract.functions.ownerOf(agent_id).call()
         if owner.lower() == expected_wallet.lower():
             return True, f"agentId {agent_id} ownerOf matches campaign wallet ({owner})"
         return False, f"agentId {agent_id} ownerOf ({owner}) does not match campaign wallet ({expected_wallet})"

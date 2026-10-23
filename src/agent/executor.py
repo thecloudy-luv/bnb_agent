@@ -173,7 +173,7 @@ def execute(
                     PANCAKESWAP_V2_ROUTER, decision.amount_in
                 ).build_transaction({
                     "from": account_address,
-                    "nonce": w3.eth.get_transaction_count(account_address),
+                    "nonce": w3.eth.get_transaction_count(account_address, "pending"),
                     "gas": 100_000,
                     "gasPrice": w3.eth.gas_price,
                     "chainId": 97,
@@ -188,7 +188,7 @@ def execute(
                 "from": account_address,
                 "data": augmented_calldata,
                 "value": 0,
-                "nonce": w3.eth.get_transaction_count(account_address),
+                "nonce": w3.eth.get_transaction_count(account_address, "pending"),
                 "gas": 300_000,
                 "gasPrice": w3.eth.gas_price,
                 "chainId": 97,
@@ -260,7 +260,7 @@ def wrap_bnb(
 
         assert private_key is not None
         with tx_lock():
-            tx_dict["nonce"] = w3.eth.get_transaction_count(account_address)
+            tx_dict["nonce"] = w3.eth.get_transaction_count(account_address, "pending")
             tx_dict["gasPrice"] = w3.eth.gas_price
             signed = w3.eth.account.sign_transaction(tx_dict, private_key)
             tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)

@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
 from agent.addresses import (
     BUSD,
     PAIR_WBNB_BUSD,
@@ -123,6 +124,7 @@ ROUTER_ABI = [
 def get_web3(rpc_url: str) -> Web3:
     """Create Web3 connection and verify BSC Testnet (chain ID 97)."""
     w3 = Web3(Web3.HTTPProvider(rpc_url))
+    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
     if not w3.is_connected():
         raise ConnectionError(f"Cannot connect to RPC: {rpc_url}")
     chain_id = w3.eth.chain_id

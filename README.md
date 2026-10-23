@@ -13,7 +13,7 @@ TiltBalance maintains an active WBNB / BUSD portfolio on PancakeSwap Testnet nea
 | **Agent Name** | `TiltBalance` |
 | **Category** | `rebalancing` |
 | **Network** | BNB Smart Chain Testnet (Chain ID `97`) |
-| **ERC-8004 Agent ID** | `<TBD - Assigned upon broadcast via scripts/register_agent.py>` |
+| **ERC-8004 Agent ID** | `2659` |
 | **Campaign Agent Wallet** | `0xa59C56C5D269c85Af6eb997deA9A1791E4E4e9C5` |
 | **ERC-8004 Identity Registry** | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | **ERC-8183 AgenticCommerce** | `0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de` |
