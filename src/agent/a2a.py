@@ -272,6 +272,9 @@ def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
 
     # Extract data from A2A message parts or direct params
     data: dict[str, Any] = {}
+    if isinstance(params.get("data"), dict):
+        data.update(params["data"])
+
     msg = params.get("message")
     if isinstance(msg, dict):
         parts = msg.get("parts")
