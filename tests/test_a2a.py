@@ -67,6 +67,20 @@ def test_negotiate_success(client: TestClient, monkeypatch: pytest.MonkeyPatch) 
     assert negotiation_hash.startswith("0x")
     assert provider_sig.startswith("0x")
 
+    # Verify A2A Message wire format per protocol specification
+    assert result["kind"] == "message"
+    assert result["role"] == "agent"
+    assert "messageId" in result
+    assert isinstance(result["parts"], list) and len(result["parts"]) == 1
+    part0 = result["parts"][0]
+    assert part0["kind"] == "data"
+    assert "data" in part0
+    data_payload = part0["data"]
+    assert data_payload["negotiation_hash"] == negotiation_hash
+    assert data_payload["provider_sig"] == provider_sig
+    assert data_payload["response"]["terms"]["price"] == expected_price
+    assert data_payload["response"]["terms"]["currency"] == "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565"
+
     recovered_address = Account.recover_message(
         encode_defunct(text=negotiation_hash),
         signature=provider_sig,

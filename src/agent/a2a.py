@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from typing import Any
+import uuid
 from bnbagent.config import resolve_network
 from bnbagent.erc8183 import ERC8183Client, NegotiationHandler
 from bnbagent.utils import RateLimitExceeded, SlidingWindowLimiter
@@ -40,6 +41,16 @@ def jsonrpc_error(req_id: Any, code: int, message: str, data: Any = None) -> dic
         "jsonrpc": "2.0",
         "id": req_id,
         "error": error_obj,
+    }
+
+
+def make_a2a_message(data: dict[str, Any]) -> dict[str, Any]:
+    """A2A Message envelope with a single data part per A2A protocol spec."""
+    return {
+        "kind": "message",
+        "role": "agent",
+        "messageId": str(uuid.uuid4()),
+        "parts": [{"kind": "data", "data": data}],
     }
 
 
@@ -120,17 +131,14 @@ def handle_negotiate(req_id: Any, data: dict[str, Any], client_ip: str) -> dict[
     resp_terms["price"] = resp_terms.get("price", atomic_price)
     resp_terms["currency"] = resp_terms.get("currency", PAYMENT_TOKEN_ADDRESS)
 
+    message_envelope = make_a2a_message(envelope)
+
+    # Hybrid payload: strictly conforms to A2A spec (result has kind, role, messageId, parts),
+    # while merging top-level envelope fields and result.message for any legacy/alternative parser.
     response_payload = {
-        "message": {
-            "role": "agent",
-            "parts": [
-                {
-                    "kind": "data",
-                    "data": envelope,
-                }
-            ],
-        },
+        **message_envelope,
         **envelope,
+        "message": message_envelope,
     }
 
     return {
@@ -182,20 +190,14 @@ def handle_job_status(req_id: Any, data: dict[str, Any]) -> dict[str, Any]:
         "submitted_at": job.submitted_at,
     }
 
+    message_envelope = make_a2a_message(job_snapshot)
     return {
         "jsonrpc": "2.0",
         "id": req_id,
         "result": {
-            "message": {
-                "role": "agent",
-                "parts": [
-                    {
-                        "kind": "data",
-                        "data": job_snapshot,
-                    }
-                ],
-            },
+            **message_envelope,
             "job": job_snapshot,
+            "message": message_envelope,
         },
     }
 
@@ -270,20 +272,14 @@ def handle_rebalance_analysis(req_id: Any, data: dict[str, Any]) -> dict[str, An
         "explanation": explanation,
     }
 
+    message_envelope = make_a2a_message(analysis_result)
     return {
         "jsonrpc": "2.0",
         "id": req_id,
         "result": {
-            "message": {
-                "role": "agent",
-                "parts": [
-                    {
-                        "kind": "data",
-                        "data": analysis_result,
-                    }
-                ],
-            },
+            **message_envelope,
             "analysis": analysis_result,
+            "message": message_envelope,
         },
     }
 
@@ -315,21 +311,15 @@ def handle_notify_funded(req_id: Any, data: dict[str, Any]) -> dict[str, Any]:
         except Exception as exc:
             logger.warning("Could not launch background thread for notify_funded: %s", exc)
 
+    notify_data = {"status": "accepted", "job_id": job_id}
+    message_envelope = make_a2a_message(notify_data)
     return {
         "jsonrpc": "2.0",
         "id": req_id,
         "result": {
-            "status": "accepted",
-            "job_id": job_id,
-            "message": {
-                "role": "agent",
-                "parts": [
-                    {
-                        "kind": "data",
-                        "data": {"status": "accepted", "job_id": job_id},
-                    }
-                ],
-            },
+            **message_envelope,
+            **notify_data,
+            "message": message_envelope,
         },
     }
 

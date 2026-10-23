@@ -22,6 +22,9 @@ def test_build_agent_card() -> None:
     assert card["description"] == AGENT_DESCRIPTION
     assert card["version"] == VERSION
     assert card["category"] == CATEGORY
+    assert card["protocolVersion"] == "0.3.0"
+    assert card["preferredTransport"] == "JSONRPC"
+    assert card["capabilities"] == {"streaming": False, "pushNotifications": False}
     assert card["iconUrl"] == f"{base_url}{ICON_PATH}"
     assert card["url"] == f"{base_url}/a2a"
     assert card["examples"] == EXAMPLES
