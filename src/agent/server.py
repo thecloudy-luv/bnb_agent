@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 import json
+import time
 from pathlib import Path
 from typing import Any, AsyncGenerator
 from fastapi import FastAPI, HTTPException, Request
@@ -56,6 +57,9 @@ def health() -> dict[str, Any]:
     }
 
 
+_A2A_LOGS: list[dict[str, Any]] = []
+
+
 @app.get("/status")
 def status() -> dict[str, Any]:
     """Public read-only status, recent rebalancing journal, and ERC-8183 jobs."""
@@ -78,6 +82,7 @@ def status() -> dict[str, Any]:
         "drift": drift_val,
         "recent_logs": recent,
         "jobs": jobs,
+        "a2a_logs": _A2A_LOGS[-10:],
     }
 
 
@@ -126,4 +131,12 @@ async def a2a_endpoint(request: Request) -> JSONResponse:
         )
 
     response_content = process_a2a_request(payload, client_ip)
+    _A2A_LOGS.append({
+        "timestamp": time.time(),
+        "client_ip": client_ip,
+        "request": payload,
+        "response": response_content,
+    })
+    if len(_A2A_LOGS) > 20:
+        _A2A_LOGS.pop(0)
     return JSONResponse(status_code=200, content=response_content)
