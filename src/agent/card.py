@@ -24,11 +24,19 @@ def build_agent_card(base_url: str) -> dict[str, Any]:
         "skills": [
             {
                 "id": "negotiate-erc8183-job",
-                "name": "Negotiate ERC-8183 Job",
-                "description": "Request a wallet-signed price quote for an ERC-8183 job.",
+                "name": "Quote Portfolio Rebalance Analysis",
+                "description": "Request a wallet-signed price quote (0.1 U) for an autonomous portfolio rebalance analysis.",
                 "examples": [
-                    "Negotiate a quote for task execution",
-                    "Request signed quotation for job creation",
+                    "Quote a portfolio rebalance analysis",
+                    "Request signed quotation for BNB tilt allocation review",
+                ],
+            },
+            {
+                "id": "notify_funded",
+                "name": "Notify Funded Job",
+                "description": "Receives notification when an ERC-8183 job is funded and triggers immediate background execution.",
+                "examples": [
+                    "notify_funded for job_id 1543",
                 ],
             },
             {

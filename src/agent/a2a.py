@@ -55,10 +55,18 @@ def handle_negotiate(req_id: Any, data: dict[str, Any], client_ip: str) -> dict[
     except RateLimitExceeded:
         return jsonrpc_error(req_id, -32000, "Rate limit exceeded")
 
-    task_description = data.get("task_description", "")
-    terms = data.get("terms")
-    if not isinstance(terms, dict):
-        return jsonrpc_error(req_id, -32602, "Invalid params: 'terms' must be an object")
+    task_description = (
+        data.get("task_description")
+        or data.get("task")
+        or "Autonomous portfolio rebalancing review"
+    )
+    raw_terms = data.get("terms")
+    terms: dict[str, Any] = dict(raw_terms) if isinstance(raw_terms, dict) else {}
+    terms.setdefault("deliverables", "JSON analysis report")
+    terms.setdefault(
+        "quality_standards",
+        "Read-only analysis only. Execute no transaction and move no funds.",
+    )
 
     # Calculate atomic price in token U units (18 decimals)
     atomic_price = str(int(Decimal(PRICE_U) * (10**18)))
@@ -75,6 +83,7 @@ def handle_negotiate(req_id: Any, data: dict[str, Any], client_ip: str) -> dict[
         wallet_provider=wallet,
         chain_id=cfg.chain_id,
         verifying_contract=COMMERCE_ADDRESS,
+        require_quality_standards=False,
     )
 
     result = handler.negotiate({
@@ -84,6 +93,9 @@ def handle_negotiate(req_id: Any, data: dict[str, Any], client_ip: str) -> dict[
 
     envelope = result.to_dict()
     envelope["provider_address"] = wallet.address
+    negotiated_at = envelope.get("response", {}).get("negotiated_at")
+    if negotiated_at:
+        envelope["negotiated_at"] = negotiated_at
 
     response_payload = {
         "message": {
@@ -253,6 +265,52 @@ def handle_rebalance_analysis(req_id: Any, data: dict[str, Any]) -> dict[str, An
     }
 
 
+def handle_notify_funded(req_id: Any, data: dict[str, Any]) -> dict[str, Any]:
+    """Handle notify_funded skill from Pokter/marketplaces."""
+    job_id = data.get("job_id") or data.get("jobId")
+    logger.info("Received notify_funded for job_id=%s: %s", job_id, data)
+
+    cfg = load_settings()
+    if cfg.run_loops and cfg.private_key and job_id:
+        try:
+            import threading
+            from dataclasses import replace
+            from bnbagent.config import resolve_network
+            from bnbagent.erc8183 import ERC8183Client
+            from agent.jobs import process_funded_job
+
+            def _background_deliver(jid: int) -> None:
+                try:
+                    net = replace(resolve_network("bsc-testnet"), rpc_url=cfg.rpc_url, use_paymaster=False)
+                    client = ERC8183Client(wallet_provider=None, network=net)
+                    job = client.get_job(jid)
+                    process_funded_job(job, client, cfg, dry_run=False)
+                except Exception as exc:
+                    logger.warning("Background delivery error on notify_funded job %s: %s", jid, exc)
+
+            threading.Thread(target=_background_deliver, args=(int(job_id),), daemon=True).start()
+        except Exception as exc:
+            logger.warning("Could not launch background thread for notify_funded: %s", exc)
+
+    return {
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "result": {
+            "status": "accepted",
+            "job_id": job_id,
+            "message": {
+                "role": "agent",
+                "parts": [
+                    {
+                        "kind": "data",
+                        "data": {"status": "accepted", "job_id": job_id},
+                    }
+                ],
+            },
+        },
+    }
+
+
 def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
     """Process an incoming A2A JSON-RPC 2.0 request."""
     if not isinstance(payload, dict):
@@ -293,16 +351,21 @@ def process_a2a_request(payload: Any, client_ip: str) -> dict[str, Any]:
     skill = data.get("skill")
     if not skill:
         if "job_id" in data or "jobId" in data:
-            skill = "erc8183-job-status"
+            if "status" in str(data).lower():
+                skill = "erc8183-job-status"
+            else:
+                skill = "notify_funded"
         elif "bnb_weight" in data or ("wbnb" in data and "busd" in data):
             skill = "rebalance-analysis"
-        elif "task_description" in data or "terms" in data:
+        elif "task_description" in data or "terms" in data or "task" in data:
             skill = "negotiate-erc8183-job"
         else:
             return jsonrpc_error(req_id, -32602, "Invalid params: unrecognized skill or payload")
 
-    if skill == "negotiate-erc8183-job":
+    if skill in ("negotiate-erc8183-job", "Quote Portfolio Rebalance Analysis", "negotiate"):
         return handle_negotiate(req_id, data, client_ip)
+    elif skill in ("notify_funded", "notify-funded"):
+        return handle_notify_funded(req_id, data)
     elif skill == "erc8183-job-status":
         return handle_job_status(req_id, data)
     elif skill == "rebalance-analysis":
