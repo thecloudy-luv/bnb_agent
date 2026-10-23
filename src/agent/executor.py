@@ -134,7 +134,7 @@ def execute(
         # 6. Build swap transaction with decision hash appended to calldata
         router = w3.eth.contract(address=PANCAKESWAP_V2_ROUTER, abi=ROUTER_ABI)
         base_tx_data = router.encode_abi(
-            fn_name="swapExactTokensForTokens",
+            "swapExactTokensForTokens",
             args=[decision.amount_in, amount_out_min, path, account_address, deadline],
         )
 

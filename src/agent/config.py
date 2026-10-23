@@ -4,7 +4,9 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# Automatically load .env if present
+# Automatically load env files if present (.env.local, env.local, .env)
+load_dotenv(".env.local")
+load_dotenv("env.local")
 load_dotenv()
 
 DEFAULT_RPC_URL = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
@@ -45,13 +47,13 @@ def load_settings(environ: dict[str, str] | None = None) -> Settings:
     env = os.environ if environ is None else environ
 
     raw_private_key = env.get("PRIVATE_KEY")
-    private_key = raw_private_key.strip() if raw_private_key else None
+    private_key = "".join(raw_private_key.split()) if raw_private_key else None
 
     rpc_url = env.get("RPC_URL", DEFAULT_RPC_URL)
     rpc_logs_url = env.get("RPC_LOGS_URL", DEFAULT_RPC_LOGS_URL).strip() or DEFAULT_RPC_LOGS_URL
 
     raw_storage_key = env.get("STORAGE_API_KEY")
-    storage_api_key = raw_storage_key.strip() if raw_storage_key else None
+    storage_api_key = "".join(raw_storage_key.split()) if raw_storage_key else None
 
     raw_scan_block = env.get("JOB_SCAN_FROM_BLOCK")
     job_scan_from_block: int | None = None
