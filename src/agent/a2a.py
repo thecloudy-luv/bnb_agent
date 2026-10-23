@@ -69,9 +69,9 @@ def handle_negotiate(req_id: Any, data: dict[str, Any], client_ip: str) -> dict[
         "quality_standards",
         "Read-only analysis only. Execute no transaction and move no funds.",
     )
-    # Remove any arbitrary client-requested price so agent quotes its exact canonical price
-    terms.pop("price", None)
-    terms["currency"] = PAYMENT_TOKEN_ADDRESS
+    # Do not mutate terms if client supplied clean terms (to preserve client request_hash)
+    if "price" in terms and not (isinstance(terms["price"], str) and terms["price"].isdigit()):
+        terms.pop("price", None)
 
     # Calculate atomic price in token U units (18 decimals)
     atomic_price = str(int(Decimal(PRICE_U) * (10**18)))
