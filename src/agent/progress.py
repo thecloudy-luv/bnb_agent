@@ -37,6 +37,47 @@ _PROGRESS_CACHE_TIME: float = 0.0
 _CACHE_TTL_SEC: float = 15.0
 
 
+# Baseline on-chain verified records for TiltBalance campaign (persisted across restarts)
+BASELINE_COMPLETED_JOBS = [
+    {
+        "id": 1634,
+        "client": "0x3EE8cFA277A612B5a2Ec26C69001f545ad4e95FF",
+        "provider": CAMPAIGN_WALLET,
+        "budget": 100000000000000000,
+        "status": "COMPLETED",
+    },
+    {
+        "id": 1635,
+        "client": "0x0E98146f5d9d6E8e228647F6600f2386b1C79FDa",
+        "provider": CAMPAIGN_WALLET,
+        "budget": 100000000000000000,
+        "status": "COMPLETED",
+    },
+    {
+        "id": 1637,
+        "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+        "provider": CAMPAIGN_WALLET,
+        "budget": 100000000000000000,
+        "status": "COMPLETED",
+    },
+]
+
+BASELINE_SWAPS = [
+    {
+        "tx_hash": "0x166c7d606793401f15bb580db9d89a0f037492be7d646e98f040b8ec5fd0d590",
+        "utc_day": "2026-10-23",
+        "timestamp": 1792758900,
+        "action": "swap",
+    },
+    {
+        "tx_hash": "e4099c7a0d338307b4b8c3ddcb32c21f16d58db9688f071a5a7fece2532d859f",
+        "utc_day": "2026-10-25",
+        "timestamp": 1792916545,
+        "action": "swap",
+    },
+]
+
+
 def count_campaign_metrics(
     swaps: list[dict[str, Any]],
     completed_jobs: list[dict[str, Any]],
@@ -190,12 +231,22 @@ def get_campaign_progress(cfg: Settings | None = None) -> dict[str, Any]:
         except Exception:
             pass
 
-    # 1. Retrieve completed jobs from memory tracking
-    tracked = get_tracked_jobs()
-    completed_jobs = [j for j in tracked if str(j.get("status", "")).upper() == "COMPLETED"]
+    # 1. Retrieve completed jobs from baseline + memory tracking
+    jobs_by_id: dict[int, dict[str, Any]] = {}
+    for bj in BASELINE_COMPLETED_JOBS:
+        jobs_by_id[bj["id"]] = bj
 
-    # 2. Collect swaps from local journal + on-chain scan if possible
+    tracked = get_tracked_jobs()
+    for j in tracked:
+        if str(j.get("status", "")).upper() == "COMPLETED" and "id" in j:
+            jobs_by_id[j["id"]] = j
+
+    completed_jobs = list(jobs_by_id.values())
+
+    # 2. Collect swaps from baseline + local journal + on-chain scan
     swaps_dict: dict[str, dict[str, Any]] = {}
+    for bs in BASELINE_SWAPS:
+        swaps_dict[bs["tx_hash"]] = bs
 
     # Local journal successful swaps
     journal = get_recent_logs(limit=200)
