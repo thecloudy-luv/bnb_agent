@@ -60,6 +60,13 @@ BASELINE_COMPLETED_JOBS = [
         "budget": 100000000000000000,
         "status": "COMPLETED",
     },
+    {
+        "id": 1665,
+        "client": "0x11f1c5F030dc91f257F7328773415Baae4EE8967",
+        "provider": CAMPAIGN_WALLET,
+        "budget": 100000000000000000,
+        "status": "COMPLETED",
+    },
 ]
 
 BASELINE_SWAPS = [
