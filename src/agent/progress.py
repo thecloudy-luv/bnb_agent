@@ -70,9 +70,27 @@ BASELINE_SWAPS = [
         "action": "swap",
     },
     {
-        "tx_hash": "e4099c7a0d338307b4b8c3ddcb32c21f16d58db9688f071a5a7fece2532d859f",
+        "tx_hash": "0xe4099c7a0d338307b4b8c3ddcb32c21f16d58db9688f071a5a7fece2532d859f",
         "utc_day": "2026-10-25",
         "timestamp": 1792916545,
+        "action": "swap",
+    },
+    {
+        "tx_hash": "0xb1d6e573f95a8a9d97ca0b329a95744f31b7c9c70cecc61b4780af9714aa9f03",
+        "utc_day": "2026-10-26",
+        "timestamp": 1792970846,
+        "action": "swap",
+    },
+    {
+        "tx_hash": "0xf40fb73efe6bb2c4b35775cfcab448ac6fb6b7ac8e2572ec832809e7eab395cf",
+        "utc_day": "2026-10-26",
+        "timestamp": 1792970855,
+        "action": "swap",
+    },
+    {
+        "tx_hash": "0x6d2194a9589338f7df5ebe69319cfb82b7afbab4deb67ff7816f16bc0f8f9ca2",
+        "utc_day": "2026-10-26",
+        "timestamp": 1792970866,
         "action": "swap",
     },
 ]
